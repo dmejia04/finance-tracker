@@ -1,0 +1,16 @@
+# Monthly budget limits per category (€)
+[budget]
+courses          = 400
+restos           = 200
+bars             = 100
+livraisons       = 80
+transport        = 150
+essence          = 150
+peages           = 80
+online_shopping  = 200
+weekends         = 300
+loisirs          = 150
+vetements        = 100
+tech             = 100
+divers           = 100
+liquidite        = 100
