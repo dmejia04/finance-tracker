@@ -24,15 +24,20 @@ def _load(*csv_files) -> pd.DataFrame:
     return df
 
 
-def _filter_month(df: pd.DataFrame, month: str | None) -> pd.DataFrame:
-    if not month:
-        return df
-    mask = df["date"].dt.to_period("M").astype(str) == month
+def _filter(df: pd.DataFrame, month: str | None, year: str | None) -> tuple[pd.DataFrame, str]:
+    if month:
+        mask = df["date"].dt.to_period("M").astype(str) == month
+        label = month
+    elif year:
+        mask = df["date"].dt.year.astype(str) == year
+        label = year
+    else:
+        return df, ""
     filtered = df[mask]
     if filtered.empty:
-        console.print(f"[yellow]No transactions found for {month}[/yellow]")
+        console.print(f"[yellow]No transactions found for {label}[/yellow]")
         raise SystemExit(0)
-    return filtered
+    return filtered, label
 
 
 @click.group()
@@ -43,13 +48,14 @@ def cli():
 @cli.command()
 @click.argument("csv_files", nargs=-1, required=True)
 @click.option("--month", default=None, help="Filter by month, e.g. 2026-01")
+@click.option("--year", default=None, help="Filter by year, e.g. 2025")
 @click.option("--weekly", is_flag=True, help="Show weekly spend table.")
 @click.option("--alerts", is_flag=True, help="Show budget alerts.")
-def report(csv_files, month, weekly, alerts):
+def report(csv_files, month, year, weekly, alerts):
     """Show net flow and category breakdown. Accepts one or more CSV files."""
     df = _load(*csv_files)
-    view = _filter_month(df, month)
-    label = f" — {month}" if month else ""
+    view, label = _filter(df, month, year)
+    label = f" — {label}" if label else ""
 
     # Net flow
     flow = net_flow(view)
@@ -96,7 +102,7 @@ def report(csv_files, month, weekly, alerts):
     # Budget alerts
     if alerts and BUDGET_FILE.exists():
         budget = load_budget(BUDGET_FILE)
-        over = check_alerts(view, budget, month)
+        over = check_alerts(view, budget, month or year)
         console.print()
         if not over:
             console.print("[green]Aucun dépassement de budget.[/green]")
@@ -121,11 +127,12 @@ def report(csv_files, month, weekly, alerts):
 @cli.command()
 @click.argument("csv_files", nargs=-1, required=True)
 @click.option("--month", default=None, help="Filter by month, e.g. 2026-01")
+@click.option("--year", default=None, help="Filter by year, e.g. 2025")
 @click.option("--out", default="data/charts", help="Output folder for charts.")
-def charts(csv_files, month, out):
+def charts(csv_files, month, year, out):
     """Generate PNG charts: net flow, category pie, weekly spend."""
     df = _load(*csv_files)
-    view = _filter_month(df, month)
+    view, _ = _filter(df, month, year)
     out_dir = Path(out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
