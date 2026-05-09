@@ -22,4 +22,5 @@ def concurrent_expenses(df: pd.DataFrame, freq: str = "W") -> pd.DataFrame:
     out = df[df["direction"] == "out"].copy()
     out = out.set_index("date").resample(freq)["amount_abs"].sum().reset_index()
     out.columns = ["period", "spend"]
-    return out.round(2)
+    out["spend"] = out["spend"].round(2)
+    return out
