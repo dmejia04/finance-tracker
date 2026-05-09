@@ -1,14 +1,74 @@
 import pandas as pd
 
-KEYWORDS = {
-    "food": ["restaurant", "cafe", "boulangerie", "supermarché", "carrefour", "lidl", "aldi", "monoprix", "franprix", "sushi", "pizza", "mcdonald", "burger"],
-    "transport": ["sncf", "ratp", "navigo", "uber", "taxi", "essence", "total", "bp", "shell"],
-    "shopping": ["amazon", "fnac", "zara", "h&m", "decathlon", "ikea", "leboncoin"],
-    "health": ["pharmacie", "médecin", "docteur", "clinique", "hopital", "mutuelle"],
-    "utilities": ["edf", "engie", "orange", "sfr", "bouygues", "free", "eau", "gaz"],
-    "rent": ["loyer", "rent", "bail"],
-    "entertainment": ["netflix", "spotify", "cinema", "theatre", "deezer", "canal"],
-    "transfer": ["virement", "transfer", "remboursement"],
+# Maps category name → keywords to match in transaction description (case-insensitive)
+CATEGORIES: dict[str, list[str]] = {
+    # --- Entrées ---
+    "salaire":          ["salaire", "paie", "employeur"],
+    "primes":           ["prime"],
+    "epargne":          ["livret", "epargne", "pel", "cel"],
+    "mutuelle":         ["mutuelle", "mgen", "alan", "apicil", "henner"],
+    "amelie":           ["ameli", "cpam", "securite sociale", "caf "],
+    "remboursements":   ["remboursement", "remb "],
+    "vinted":           ["vinted"],
+
+    # --- Charges Fixes ---
+    "loyer":            ["loyer", "loyement", "logement", "bail"],
+    "pret_voiture":     ["credit auto", "pret auto", "pret voiture", "loa "],
+    "pret_revolut":     ["revolut loan", "revolut credit"],
+    "pret_provisio":    ["provisio"],
+    "edf":              ["edf", "engie", "electricite", "gaz reseau"],
+    "frais_bancaires":  ["frais bancaires", "cotisation carte", "frais tenue", "commission"],
+    "assurance_voiture":["assurance auto", "maaf", "axa auto", "macif", "matmut"],
+    "assurance_habitat":["assurance hab", "assurance logement", "assurance maison"],
+    "assurance_nomade": ["assurance nomade", "assurance telephone", "assurance mobile"],
+    "internet":         ["orange", "sfr", "bouygues", "free ", "bbox", "fibre", "adsl"],
+    "telephone":        ["forfait mobile", "forfait tel", "red by sfr", "sosh", "b&you"],
+    "apple":            ["apple"],
+    "amazon_prime":     ["amazon prime", "amazon.fr"],
+    "spotify":          ["spotify"],
+    "natgeo":           ["national geo", "natgeo", "disney+", "disney plus"],
+
+    # --- Charges Variables ---
+    "courses":          ["carrefour", "leclerc", "intermarche", "lidl", "aldi",
+                         "monoprix", "franprix", "super u", "auchan", "casino supermarche"],
+    "livraisons":       ["uber eats", "deliveroo", "just eat", "dominos", "frichti"],
+    "cantine":          ["cantine", "resto u ", "restaurant administratif"],
+    "restos":           ["restaurant", "brasserie", "bistrot", "pizzeria", "sushi",
+                         "burger", "mcdonald", "kfc", "subway"],
+    "bars":             ["bar ", "pub ", "biere", "cocktail", "cafe de"],
+    "vin":              ["cave ", "vins ", "wine", "nicolas "],
+    "maison":           ["ikea", "bricomarche", "leroy merlin", "castorama", "brico depot",
+                         "maison du monde"],
+    "vetements":        ["zara", "h&m", "uniqlo", "pull and bear", "mango", "kiabi",
+                         "asos", "zalando"],
+    "sport":            ["decathlon", "intersport", "trail", "course a pied", "running"],
+    "tech":             ["fnac", "darty", "boulanger", "ldlc", "materiel.net"],
+    "loisirs":          ["cinema", "theatre", "musee", "escape", "bowling", "paintball"],
+    "cadeaux":          ["cadeau", "fleurs", "florist"],
+    "essence":          ["total ", "bp ", "shell ", "esso", "essence", "carburant", "station"],
+    "peages":           ["sanef", "vinci autoroute", "peage", "telepeage", "liber-t"],
+    "transport":        ["sncf", "ratp", "navigo", "blablacar", "ouibus", "flixbus",
+                         "uber ", "taxi", "vtc "],
+    "strava":           ["strava"],
+    "velotoulouse":     ["velotoulouse", "velo toulouse", "veltoul"],
+    "amex":             ["american express", "amex"],
+    "online_shopping":  ["paypal", "oney"],
+    "divers":           [],  # catch-all — always last
+}
+
+# Which categories count as income (used to split in/out)
+INCOME_CATEGORIES = {"salaire", "primes", "epargne", "mutuelle", "amelie", "remboursements", "vinted"}
+
+# Group labels for reporting
+FIXED_CHARGES = {
+    "loyer", "pret_voiture", "pret_revolut", "pret_provisio", "edf",
+    "frais_bancaires", "assurance_voiture", "assurance_habitat", "assurance_nomade",
+    "internet", "telephone", "apple", "amazon_prime", "spotify", "natgeo",
+}
+VARIABLE_CHARGES = {
+    "courses", "livraisons", "cantine", "restos", "bars", "vin", "maison",
+    "vetements", "sport", "tech", "loisirs", "cadeaux", "essence", "peages",
+    "transport", "strava", "velotoulouse", "amex", "online_shopping", "divers",
 }
 
 
@@ -22,15 +82,26 @@ def load_transactions(raw: list[dict]) -> pd.DataFrame:
         df["direction"] = df["amount"].apply(lambda x: "in" if x > 0 else "out")
         df["amount_abs"] = df["amount"].abs()
 
-    df["category_label"] = df.get("name", pd.Series([""] * len(df))).apply(_classify)
+    # classify using both name and short_label if available
+    text_col = df.get("name", pd.Series([""] * len(df))).astype(str)
+    if "short_label" in df.columns:
+        text_col = text_col + " " + df["short_label"].astype(str)
 
-    cols = ["date", "name", "amount", "amount_abs", "direction", "category_label"]
+    df["category"] = text_col.apply(_classify)
+
+    df["group"] = df["category"].apply(
+        lambda c: "entrees" if c in INCOME_CATEGORIES
+        else "charges_fixes" if c in FIXED_CHARGES
+        else "charges_variables"
+    )
+
+    cols = ["date", "name", "amount", "amount_abs", "direction", "category", "group"]
     return df[[c for c in cols if c in df.columns]]
 
 
-def _classify(label: str) -> str:
-    label_lower = str(label).lower()
-    for category, keywords in KEYWORDS.items():
-        if any(k in label_lower for k in keywords):
+def _classify(text: str) -> str:
+    text = str(text).lower()
+    for category, keywords in CATEGORIES.items():
+        if keywords and any(k in text for k in keywords):
             return category
-    return "other"
+    return "divers"
