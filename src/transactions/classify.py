@@ -14,9 +14,11 @@ CATEGORIES: dict[str, list[str]] = {
     # --- Charges Fixes ---
     "loyer":            ["loyer", "loyement", "logement", "bail"],
     "pret_voiture":     ["credit auto", "pret auto", "pret voiture", "loa ", "pret voitire", "sofinco"],
+    "entretien_voiture":["volkswagen bank", "volkswagen financial"],
     "pret_revolut":     ["ravolut", "revolut"],
     "pret_provisio":    ["provisio"],
     "edf":              ["edf", "engie", "electricite", "gaz reseau"],
+    "taxes":            ["dgfip", "impot", "tresor public"],
     "frais_bancaires":  ["frais bancaires", "cotisation carte", "frais tenue", "commission"],
     "assurance_voiture":["assurance auto", "maaf", "axa auto", "macif", "matmut"],
     "assurance_habitat":["assurance hab", "assurance logement", "assurance maison", "cardif iard"],
@@ -53,6 +55,7 @@ CATEGORIES: dict[str, list[str]] = {
     "strava":           ["strava"],
     "velotoulouse":     ["velotoulouse", "velo toulouse", "veltoul"],
     "amex":             ["american express", "amex"],
+    "liquidite":        ["retrait dab", "retrait carte"],
     "online_shopping":  ["paypal", "oney"],
     "divers":           [],  # catch-all — always last
 }
@@ -65,6 +68,7 @@ FIXED_CHARGES = {
     "loyer", "pret_voiture", "pret_revolut", "pret_provisio", "edf",
     "frais_bancaires", "assurance_voiture", "assurance_habitat", "assurance_nomade",
     "internet", "telephone", "apple", "amazon_prime", "spotify", "natgeo",
+    "taxes", "entretien_voiture",
 }
 VARIABLE_CHARGES = {
     "courses", "livraisons", "cantine", "restos", "bars", "vin", "maison",
